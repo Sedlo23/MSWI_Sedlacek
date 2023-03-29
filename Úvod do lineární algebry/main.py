@@ -18,7 +18,7 @@ def direct_solve(A, b):
 
 
 # Funkce pro iterační řešení soustavy pomocí metody relaxace
-def iterative_solve(A, b, w=1.25, tol=1e-6, max_iter=1000):
+def iterative_solve(A, b, w=1, tol=0.0001, max_iter=4):
     n = len(A)
     x = np.zeros(n)
     for k in range(max_iter):
@@ -36,9 +36,12 @@ def iterative_solve(A, b, w=1.25, tol=1e-6, max_iter=1000):
 
 
 # Měření času pro obě metody pro různé velikosti matice
-matrix_sizes = [1,2,3,4,5,6,7,8,9,10]
+matrix_sizes = [1,2,3,4,5,6,7,8,9,10,20,30,40,50,60,70,80,90,100,120,140,160,180,200,300,400]
 direct_times = []
-iterative_times = []
+iterative_times1 = []
+iterative_times2 = []
+iterative_times3 = []
+iterative_times4 = []
 
 for n in matrix_sizes:
     A = generate_matrix(n)
@@ -50,13 +53,31 @@ for n in matrix_sizes:
     direct_times.append(end - start)
 
     start = time.time()
-    x = iterative_solve(A, b)
+    x = iterative_solve(A, b,max_iter=5)
     end = time.time()
-    iterative_times.append(end - start)
+    iterative_times1.append(end - start)
+
+    start = time.time()
+    x = iterative_solve(A, b,max_iter=15)
+    end = time.time()
+    iterative_times2.append(end - start)
+
+    start = time.time()
+    x = iterative_solve(A, b,max_iter=50)
+    end = time.time()
+    iterative_times3.append(end - start)
+
+    start = time.time()
+    x = iterative_solve(A, b,max_iter=100)
+    end = time.time()
+    iterative_times4.append(end - start)
 
 # Vykreslení grafu
 plt.plot(matrix_sizes, direct_times, label="Direct")
-plt.plot(matrix_sizes, iterative_times, label="Iterative")
+plt.plot(matrix_sizes, iterative_times1, label="Iterative n = 5")
+plt.plot(matrix_sizes, iterative_times2, label="Iterative n = 15")
+plt.plot(matrix_sizes, iterative_times3, label="Iterative n = 50")
+plt.plot(matrix_sizes, iterative_times4, label="Iterative n = 100")
 plt.xlabel("Matrix size")
 plt.ylabel("Time (s)")
 plt.title("Comparison of direct and iterative linear system solvers")
