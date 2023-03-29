@@ -36,7 +36,7 @@ def iterative_solve(A, b, w=1.25, tol=1e-6, max_iter=1000):
 
 
 # Měření času pro obě metody pro různé velikosti matice
-matrix_sizes = [10, 20, 30, 40, 50]
+matrix_sizes = [1,2,3,4,5,6,7,8,9,10]
 direct_times = []
 iterative_times = []
 
