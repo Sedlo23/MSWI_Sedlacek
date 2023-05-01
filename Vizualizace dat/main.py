@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 from wordcloud import WordCloud
 from textblob import TextBlob
 
+from collections import Counter
+
 # Načtení datasetu z CSV souboru
 data = pd.read_csv("twitter_MBTI.csv")
 
@@ -65,4 +67,56 @@ plt.title("Sentiment analysis by MBTI type")
 plt.xlabel("MBTI type")
 plt.ylabel("Average polarity score")
 plt.legend()
+plt.show()
+
+# 1. Počet slov v tweetech podle MBTI typu
+word_counts_data = []
+for name, group in type_groups:
+    tweets = group["text"].str.cat(sep='|||').split('|||')
+    total_words = sum([len(tweet.split()) for tweet in tweets])
+    word_counts_data.append((name, total_words))
+
+plt.figure(figsize=(8, 6))
+plt.bar([name for name, _ in word_counts_data], [total_words for _, total_words in word_counts_data])
+plt.title("Word count by MBTI type")
+plt.xlabel("MBTI type")
+plt.ylabel("Total words")
+plt.show()
+
+# 2. Počet jedinečných slov v tweetech podle MBTI typu
+unique_word_counts_data = []
+for name, group in type_groups:
+    tweets = group["text"].str.cat(sep='|||').split('|||')
+    unique_words = set()
+    for tweet in tweets:
+        unique_words.update(tweet.split())
+    unique_word_counts_data.append((name, len(unique_words)))
+
+plt.figure(figsize=(8, 6))
+plt.bar([name for name, _ in unique_word_counts_data], [unique_count for _, unique_count in unique_word_counts_data])
+plt.title("Unique word count by MBTI type")
+plt.xlabel("MBTI type")
+plt.ylabel("Total unique words")
+plt.show()
+
+# 3. Četnost nejčastějších slov v tweetech pro každý MBTI typ
+n_common_words = 5
+common_word_counts_data = []
+for name, group in type_groups:
+    tweets = group["text"].str.cat(sep='|||').split('|||')
+    words = [word for tweet in tweets for word in tweet.split()]
+    word_counts = Counter(words)
+    common_words = word_counts.most_common(n_common_words)
+    common_word_counts_data.append((name, common_words))
+
+fig, axes = plt.subplots(nrows=4, ncols=4, figsize=(12, 12), sharex=True, sharey=True)
+for i, (name, common_words) in enumerate(common_word_counts_data):
+    ax = axes[i // 4, i % 4]
+    ax.bar([word for word, _ in common_words], [count for _, count in common_words])
+    ax.set_title(f"{name}")
+
+fig.text(0.5, 0.92, "Top 5 common words by MBTI type", ha="center", va="center", fontsize=14)
+fig.text(0.5, 0.08, "Words", ha="center", va="center", fontsize=12)
+fig.text(0.08, 0.5, "Frequency", ha="center", va="center", rotation="vertical", fontsize=12)
+plt.tight_layout()
 plt.show()

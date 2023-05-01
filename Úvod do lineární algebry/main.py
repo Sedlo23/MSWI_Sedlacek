@@ -1,85 +1,104 @@
 import time
 import numpy as np
 import matplotlib.pyplot as plt
+from functools import partial
+from threading import Timer
 
-# Funkce pro generování náhodné matice
+
 def generate_matrix(n):
-    return np.random.rand(n, n)
+    return np.random.uniform(-1, 1, (n, n))
 
 
-# Funkce pro generování náhodné pravé strany
 def generate_b(n):
-    return np.random.rand(n)
+    return np.random.uniform(-1, 1, n)
 
 
-# Funkce pro přímé řešení soustavy
 def direct_solve(A, b):
     return np.linalg.solve(A, b)
 
 
-# Funkce pro iterační řešení soustavy pomocí metody relaxace
-def iterative_solve(A, b, w=1, tol=0.0001, max_iter=4):
+def iterative_solve(A, b, w=1.5, tol=1e-5, max_time=120):
     n = len(A)
     x = np.zeros(n)
-    for k in range(max_iter):
+    start_time = time.time()
+    k = 0
+    while True:
         x_new = np.zeros(n)
         for i in range(n):
-            s = b[i]
+            s = (b[i])
             for j in range(n):
                 if j != i:
-                    s -= A[i][j] * x[j]
-            x_new[i] = w / A[i][i] * s + (1 - w) * x[i]
-        if np.linalg.norm(x_new - x) < tol:
-            return x_new
+                    s -= A[i, j] * x[j]
+            if A[i, i] != 0:
+                x_new[i] = w / A[i, i] * s + (1 - w) * x[i]
+            else:
+                x_new[i] = x[i]
+            if np.isnan(x_new[i]) or np.isinf(x_new[i]):
+                return None, k  # Přerušit iteraci v případě neplatných hodnot nebo přetečení
+        k += 1
+        if np.linalg.norm(x_new - x) < tol or (time.time() - start_time) > max_time:
+            break
         x = x_new
-    return x
+    return x, k
 
 
-# Měření času pro obě metody pro různé velikosti matice
-matrix_sizes = [1,2,3,4,5,6,7,8,9,10,20,30,40,50,60,70,80,90,100,120,140,160,180,200,300,400]
+
+def run_with_timeout(func, timeout, *args, **kwargs):
+    result = None
+    timer = Timer(timeout, lambda: result)
+    timer.start()
+    try:
+        result = func(*args, **kwargs)
+    finally:
+        timer.cancel()
+    return result
+
+
+def estimate_time(matrix_size, previous_matrix_size, previous_time, time_complexity_function):
+    factor = time_complexity_function(matrix_size) / time_complexity_function(previous_matrix_size)
+    return previous_time * factor
+
+
+def time_complexity_iterative(n):
+    return n ** 2  # Pro SOR iterační metodu, můžete upravit podle časové složitosti konkrétní iterační metody
+
+
+matrix_sizes = [int(10 ** i) for i in range(1, 5)]  # Velikosti matice: 1E1, 1E2, 1E3, 1E4, 1E5, 1E6
 direct_times = []
-iterative_times1 = []
-iterative_times2 = []
-iterative_times3 = []
-iterative_times4 = []
+iterative_times = []
+previous_iterative_time = None
 
 for n in matrix_sizes:
+    print(f"Processing matrix size: {n}")
     A = generate_matrix(n)
     b = generate_b(n)
 
     start = time.time()
-    x = direct_solve(A, b)
+    x_direct = direct_solve(A, b)
     end = time.time()
     direct_times.append(end - start)
 
     start = time.time()
-    x = iterative_solve(A, b,max_iter=5)
+    x_iter, iterations = iterative_solve(A, b, w=1, tol=0.1, max_time=120)
     end = time.time()
-    iterative_times1.append(end - start)
 
-    start = time.time()
-    x = iterative_solve(A, b,max_iter=15)
-    end = time.time()
-    iterative_times2.append(end - start)
+    if (end - start) >= 120:
+        if previous_iterative_time is not None:
+            estimated_time = estimate_time(n, previous_matrix_size, previous_iterative_time, time_complexity_iterative)
+            iterative_times.append(estimated_time)
+            print(f"Matrix size {n} took too long for iterative solve. Estimated time: {estimated_time:.2f}s")
+        else:
+            print(f"Matrix size {n} took too long for iterative solve. No previous data for estimation.")
+            iterative_times.append(None)
+    else:
+        iterative_times.append(end - start)
+        previous_iterative_time = end - start
+        previous_matrix_size = n
 
-    start = time.time()
-    x = iterative_solve(A, b,max_iter=50)
-    end = time.time()
-    iterative_times3.append(end - start)
-
-    start = time.time()
-    x = iterative_solve(A, b,max_iter=100)
-    end = time.time()
-    iterative_times4.append(end - start)
-
-# Vykreslení grafu
 plt.plot(matrix_sizes, direct_times, label="Direct")
-plt.plot(matrix_sizes, iterative_times1, label="Iterative n = 5")
-plt.plot(matrix_sizes, iterative_times2, label="Iterative n = 15")
-plt.plot(matrix_sizes, iterative_times3, label="Iterative n = 50")
-plt.plot(matrix_sizes, iterative_times4, label="Iterative n = 100")
+plt.plot(matrix_sizes, iterative_times, label="Iterative (SOR)", linestyle='--')
 plt.xlabel("Matrix size")
-plt.ylabel("Time (s)")
+plt.ylabel("Average Time (s)")
 plt.title("Comparison of direct and iterative linear system solvers")
 plt.legend()
 plt.show()
